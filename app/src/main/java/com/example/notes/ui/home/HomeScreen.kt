@@ -15,6 +15,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
@@ -28,7 +29,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -43,6 +46,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.notes.models.Note
 import com.example.notes.ui.theme.NotesTheme
 import com.example.test.add
+import com.example.test.close
 import com.example.test.keep
 import com.example.test.search
 import java.time.LocalDate
@@ -60,7 +64,7 @@ fun HomeScreen(
 
     LaunchedEffect(Unit) {
         if(message != null) {
-            snackbarHostState.showSnackbar(message)
+            snackbarHostState.showSnackbar(message, actionLabel = "Ok")
         } else {
             snackbarHostState.currentSnackbarData?.dismiss()
         }
@@ -207,28 +211,41 @@ fun NoteItem(
 fun SearchBar(
     modifier: Modifier = Modifier
 ) {
-    TextField(
-        value = "Search notes..",
-        onValueChange = {},
-        placeholder = {
-            Text("Search notes")
-        },
-        leadingIcon = {
-            Icon(
-                search,
-                null
-            )
-        },
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = TextFieldDefaults.colors(
-            unfocusedIndicatorColor = Color.Transparent,
-            focusedIndicatorColor = Color.Transparent,
-            disabledIndicatorColor = Color.Transparent,
-            errorIndicatorColor = Color.Transparent,
-        ),
-        modifier = modifier
-    )
-}
+    val (query, setQuery) = rememberSaveable { mutableStateOf("") }
+
+        TextField(
+            value = query,
+            onValueChange = setQuery,
+            placeholder = {
+                Text("Search notes..")
+            },
+            leadingIcon = {
+                Icon(
+                    search,
+                    null
+                )
+            },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { setQuery("") }) {
+                        Icon(
+                            close,
+                            null
+                        )
+                    }
+                }
+            },
+            shape = MaterialTheme.shapes.extraLarge,
+            colors = TextFieldDefaults.colors(
+                unfocusedIndicatorColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent,
+                errorIndicatorColor = Color.Transparent,
+            ),
+            modifier = modifier
+        )
+
+    }
 
 @Preview
 @Preview(uiMode = UI_MODE_NIGHT_YES)

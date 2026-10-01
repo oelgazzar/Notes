@@ -28,6 +28,7 @@ class EditViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private var savedNoteId = savedStateHandle.toRoute<NavDestination.Edit>().id
+    private val newNote = savedNoteId == 0L
 
     private val _noteDraft = MutableStateFlow(Note())
     val noteDraft = _noteDraft
@@ -80,6 +81,8 @@ class EditViewModel @Inject constructor(
     }
 
     private suspend fun deleteNote(savedNoteId: Long) {
+        if (newNote) return
+
         noteRepository.delete(savedNoteId)
         broadcastMessage = "Empty note discarded"
     }

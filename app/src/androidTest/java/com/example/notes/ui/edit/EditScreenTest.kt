@@ -3,6 +3,7 @@ package com.example.notes.ui.edit
 import android.app.Application
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -29,12 +30,14 @@ import dagger.hilt.testing.TestInstallIn
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import junit.framework.TestCase.assertEquals
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.time.Duration.Companion.milliseconds
 
 @HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
@@ -151,6 +154,37 @@ class EditScreenTest {
             .performClick()
         composeRule
             .onNodeWithText("Updated Title").assertIsDisplayed()
+    }
+
+    @Test
+    fun updatedNoteCleared_showMessage() = runTest {
+        noteRepository.insert(Note(title = "Test Title"))
+        composeRule
+            .onNodeWithText("Test Title")
+            .performClick()
+        composeRule
+            .onNodeWithText("Test Title").performTextClearance()
+        composeRule
+            .onNodeWithTag("back_button")
+            .performClick()
+        composeRule
+            .onNodeWithText("empty note discarded", substring = true, ignoreCase = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun newNoteCleared_showMessage() = runTest {
+        composeRule
+            .onNodeWithTag("add_note_fab")
+            .performClick()
+        composeRule
+            .onNodeWithText("Title").performTextInput("Test Title")
+        delay(2000.milliseconds)
+        composeRule.onNodeWithText("Test Title").performTextClearance()
+        composeRule
+            .onNodeWithTag("back_button")
+            .performClick()
+        composeRule
+            .onNodeWithText("empty note discarded", substring = true, ignoreCase = true).assertIsNotDisplayed()
     }
 }
 
