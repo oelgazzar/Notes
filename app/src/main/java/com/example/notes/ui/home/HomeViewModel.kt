@@ -1,7 +1,6 @@
 package com.example.notes.ui.home
 
 import android.util.Log
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.notes.data.NoteRepository
@@ -20,7 +19,6 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val noteRepository: NoteRepository,
-    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     val notes = noteRepository.getAll()
         .onEach { Log.d("HomeViewModel", "List updated") }
@@ -75,7 +73,7 @@ class HomeViewModel @Inject constructor(
     fun deleteNote(note: Note) {
         viewModelScope.launch {
             noteRepository.delete(note)
-            deletedNote.value = note
+            updateDeletedNote(note)
         }
     }
 }

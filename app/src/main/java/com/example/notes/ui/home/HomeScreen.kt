@@ -253,7 +253,7 @@ fun NoteItem(
     SwipeToDismissBox(
         state = dismissState,
         backgroundContent = {},
-        onDismiss = { value ->
+        onDismiss = {
             if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
                 onDismiss()
             } else {
