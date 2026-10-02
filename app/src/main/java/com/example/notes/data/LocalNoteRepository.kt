@@ -24,4 +24,6 @@ class LocalNoteRepository @Inject constructor(
     override suspend fun delete(note: Note) = noteDao.delete(note.toEntity())
 
     override suspend fun delete(id: Long) = noteDao.delete(id)
+
+    override suspend fun delete(ids: List<Long>) = noteDao.delete(ids)
 }

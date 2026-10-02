@@ -19,4 +19,6 @@ interface NoteRepository {
     suspend fun delete(note: Note)
 
     suspend fun delete(id: Long)
+
+    suspend fun delete(ids: List<Long>)
 }

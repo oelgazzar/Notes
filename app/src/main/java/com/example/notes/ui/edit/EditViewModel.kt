@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -28,7 +29,7 @@ class EditViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private var savedNoteId = savedStateHandle.toRoute<NavDestination.Edit>().id
-    private val newNote = savedNoteId == 0L
+    private val isNewlyCreatedNote = savedNoteId == 0L
 
     private val _noteDraft = MutableStateFlow(Note())
     val noteDraft = _noteDraft
@@ -36,9 +37,6 @@ class EditViewModel @Inject constructor(
 
     private val _uiEvents = Channel<UiEvent>()
     val uiEvents = _uiEvents.receiveAsFlow()
-
-    var broadcastMessage: String? = null
-        private set
 
     init {
         getSavedNote()
@@ -73,18 +71,18 @@ class EditViewModel @Inject constructor(
         viewModelScope.launch {
             if (noteDraft.value.isEmpty) {
                 deleteNote(savedNoteId)
+                _uiEvents.send(UiEvent.NavigateBack(
+                    message = if (!isNewlyCreatedNote) "Empty note discarded" else null,
+                ))
             } else {
                 saveNote(_noteDraft.value)
+                _uiEvents.send(UiEvent.NavigateBack())
             }
-            _uiEvents.send(UiEvent.NavigateBack)
         }
     }
 
     private suspend fun deleteNote(savedNoteId: Long) {
-        if (newNote) return
-
         noteRepository.delete(savedNoteId)
-        broadcastMessage = "Empty note discarded"
     }
 
     private suspend fun saveNote(currentNoteDraft: Note) {
@@ -96,9 +94,18 @@ class EditViewModel @Inject constructor(
             else -> noteRepository.update(currentNoteDraft.copy(id = savedNoteId))
         }
     }
+
+    fun deleteCurrentNote() {
+        viewModelScope.launch {
+            deleteNote(savedNoteId)
+            _uiEvents.send(UiEvent.NavigateBack(
+                message = "Note deleted",
+                deletedNote = Json.encodeToString(Note.serializer(), _noteDraft.value.copy(id = savedNoteId))
+            ))
+        }
+    }
 }
 
 sealed interface UiEvent {
-//    data class ShowSnackbar(val message: String) : UiEvent
-    object NavigateBack : UiEvent
+    data class NavigateBack(val message: String? = null, val deletedNote: String? = null) : UiEvent
 }

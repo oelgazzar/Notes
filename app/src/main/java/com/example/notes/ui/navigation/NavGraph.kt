@@ -1,6 +1,5 @@
 package com.example.notes.ui.navigation
 
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -19,18 +18,19 @@ fun NavHost(
     ) {
         composable<NavDestination.Home>{ backStackEntry ->
             val message = backStackEntry.savedStateHandle.get<String>("message")
-            Log.d("NavHost", message?:"")
+            val deletedNote = backStackEntry.savedStateHandle.get<String>("deletedNote")
             HomeScreen(
                 message = message,
+                deletedNoteSerialized = deletedNote,
                 onNavigateToNote = { navController.navigate(NavDestination.Edit(it)) }
             )
         }
 
         composable<NavDestination.Edit> {
             EditScreen(
-                navigateToHome = { message ->
-                    Log.d("EditComposable", message?:"")
+                navigateToHome = { message, deletedNote ->
                     navController.previousBackStackEntry?.savedStateHandle?.set("message", message)
+                    navController.previousBackStackEntry?.savedStateHandle?.set("deletedNote", deletedNote)
                     navController.navigateUp()
                 }
             )
