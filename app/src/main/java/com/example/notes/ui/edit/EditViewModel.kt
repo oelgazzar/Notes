@@ -85,6 +85,7 @@ class EditViewModel @Inject constructor(
 
     // Called when leave screen or back button is pressed
     fun saveNoteOrDeleteIfEmpty() {
+        println("saveNoteOrDeleteIfEmpty called")
         autoSaveJob?.cancel()
 
         viewModelScope.launch {
@@ -115,7 +116,7 @@ class EditViewModel @Inject constructor(
             }
             _uiEvents.send(
                 UiEvent.NavigateBack(
-                    id?.let { _noteDraft.value.copy(id = it) }
+                    if (isNewNote) null else _noteDraft.value.copy(id = id!!)
                 )
             )
         }

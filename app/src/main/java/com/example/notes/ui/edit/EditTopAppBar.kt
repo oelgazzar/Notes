@@ -42,7 +42,11 @@ fun EditTopAppBar(
         actions = {
             var expanded by remember { mutableStateOf(false) }
             Box {
-                IconButton(onClick = { expanded = true }) {
+                IconButton(
+                    onClick = { expanded = true },
+                    modifier = Modifier
+                        .testTag("more_vert_button")
+                ) {
                     Icon(
                         more_vert,
                         null

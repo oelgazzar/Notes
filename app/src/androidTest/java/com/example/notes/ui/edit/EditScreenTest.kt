@@ -168,4 +168,39 @@ class EditScreenTest {
         composeRule
             .onNodeWithText("empty note discarded", substring = true, ignoreCase = true).assertIsNotDisplayed()
     }
+
+    @Test
+    fun deleteSavedNote_showUndoMessage() = runTest {
+        noteRepository.insert(Note(title = "Test Title"))
+        composeRule
+            .onNodeWithText("Test Title")
+            .performClick()
+        composeRule
+            .onNodeWithTag("more_vert_button")
+            .performClick()
+        composeRule
+            .onNodeWithText("Delete").performClick()
+        composeRule
+            .onNodeWithText("yes", ignoreCase = true).performClick()
+        composeRule
+            .onNodeWithText("note deleted", substring = true, ignoreCase = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun deleteNewNote_showNoUndoMessage() = runTest {
+        composeRule
+            .onNodeWithTag("add_note_fab")
+            .performClick()
+        composeRule
+            .onNodeWithText("Title").performTextInput("Test Title")
+        composeRule
+            .onNodeWithTag("more_vert_button")
+            .performClick()
+        composeRule
+            .onNodeWithText("Delete").performClick()
+        composeRule
+            .onNodeWithText("yes", ignoreCase = true).performClick()
+        composeRule
+            .onNodeWithText("note deleted", substring = true, ignoreCase = true).assertIsNotDisplayed()
+    }
 }
