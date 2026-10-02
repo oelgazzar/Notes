@@ -9,16 +9,16 @@ import com.example.notes.models.Note
 import com.example.notes.ui.navigation.NavDestination
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -28,8 +28,9 @@ class EditViewModel @Inject constructor(
     private val noteRepository: NoteRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-    private var savedNoteId = savedStateHandle.toRoute<NavDestination.Edit>().id
-    private val isNewlyCreatedNote = savedNoteId == 0L
+    private var savedNoteId: Long? =
+        savedStateHandle.toRoute<NavDestination.Edit>().id.takeIf { it != 0L }
+    private val isNewNote = savedNoteId == null
 
     private val _noteDraft = MutableStateFlow(Note())
     val noteDraft = _noteDraft
@@ -38,74 +39,89 @@ class EditViewModel @Inject constructor(
     private val _uiEvents = Channel<UiEvent>()
     val uiEvents = _uiEvents.receiveAsFlow()
 
-    init {
-        getSavedNote()
-    }
+    private var autoSaveJob: Job? = null
 
-    private fun getSavedNote() {
+    init {
         viewModelScope.launch {
-            // populate the draft with saved not or create a fresh new one
-            _noteDraft.value = noteRepository.get(savedNoteId).map { it ?: Note() }.first()
-            startAutosave()
+            getSavedNote()
+            autoSaveJob = launch {
+                startAutosave()
+            }
         }
     }
 
+    private suspend fun getSavedNote() {
+        // populate the draft with saved not or create a fresh new one
+        savedNoteId?.let {
+            _noteDraft.value = noteRepository.get(it).filterNotNull().first()
+        }
+    }
+
+    private suspend fun startAutosave() {
+        _noteDraft
+            .debounce(500.milliseconds)
+            .collectLatest { currentNoteDraft ->
+                if (!currentNoteDraft.isEmpty) {
+                    saveNote(currentNoteDraft)
+                }
+            }
+    }
+
+    private suspend fun saveNote(currentNoteDraft: Note) {
+        val id = savedNoteId
+        if (id == null) {
+            savedNoteId = noteRepository.insert(currentNoteDraft)
+        } else {
+            noteRepository.update(currentNoteDraft.copy(id = id))
+
+        }
+    }
+
+    // Called from ui on text input change
     fun updateNote(updatedNoteDraft: Note) {
         _noteDraft.value = updatedNoteDraft
     }
 
-    private fun startAutosave() {
-        viewModelScope.launch {
-            _noteDraft
-                .debounce(500.milliseconds)
-                .collectLatest { currentNoteDraft ->
-                    if (!currentNoteDraft.isEmpty) {
-                        saveNote(currentNoteDraft)
-                    }
-                }
-        }
-    }
 
-    /* Called when leave screen or back button is pressed */
-    fun saveOrDeleteNote() {
+    // Called when leave screen or back button is pressed
+    fun saveNoteOrDeleteIfEmpty() {
+        autoSaveJob?.cancel()
+
         viewModelScope.launch {
-            if (noteDraft.value.isEmpty) {
-                deleteNote(savedNoteId)
-                _uiEvents.send(UiEvent.NavigateBack(
-                    message = if (!isNewlyCreatedNote) "Empty note discarded" else null,
-                ))
-            } else {
+            val id = savedNoteId
+            if (!noteDraft.value.isEmpty) {
+                // Not empty -> save
                 saveNote(_noteDraft.value)
-                _uiEvents.send(UiEvent.NavigateBack())
+                _uiEvents.send(UiEvent.NavigateBack(null))
+            } else {
+                // Empty -> discard and show message if not new
+                deleteNote(id)
+                _uiEvents.send(UiEvent.NavigateBack(_noteDraft.value.takeIf { !isNewNote }))
             }
         }
     }
 
-    private suspend fun deleteNote(savedNoteId: Long) {
-        noteRepository.delete(savedNoteId)
+    private suspend fun deleteNote(id: Long?) {
+        if (id == null) return
+        noteRepository.delete(id)
     }
 
-    private suspend fun saveNote(currentNoteDraft: Note) {
-        when {
-            savedNoteId == 0L -> {
-                savedNoteId = noteRepository.insert(currentNoteDraft)
-            }
+    fun deleteNote() {
+        val id = savedNoteId
 
-            else -> noteRepository.update(currentNoteDraft.copy(id = savedNoteId))
-        }
-    }
-
-    fun deleteCurrentNote() {
         viewModelScope.launch {
-            deleteNote(savedNoteId)
-            _uiEvents.send(UiEvent.NavigateBack(
-                message = "Note deleted",
-                deletedNote = Json.encodeToString(Note.serializer(), _noteDraft.value.copy(id = savedNoteId))
-            ))
+            if (id != null) {
+                deleteNote(id)
+            }
+            _uiEvents.send(
+                UiEvent.NavigateBack(
+                    id?.let { _noteDraft.value.copy(id = it) }
+                )
+            )
         }
     }
 }
 
 sealed interface UiEvent {
-    data class NavigateBack(val message: String? = null, val deletedNote: String? = null) : UiEvent
+    data class NavigateBack(val deletedNote: Note?) : UiEvent
 }

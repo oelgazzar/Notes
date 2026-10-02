@@ -1,7 +1,7 @@
 package com.example.notes.ui.home
 
-import android.os.Message
 import android.util.Log
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.notes.data.NoteRepository
@@ -9,17 +9,18 @@ import com.example.notes.models.Note
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val noteRepository: NoteRepository
+    private val noteRepository: NoteRepository,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     val notes = noteRepository.getAll()
         .onEach { Log.d("HomeViewModel", "List updated") }
@@ -29,27 +30,40 @@ class HomeViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    private var deletedNote: Note? = null
-
+    private val deletedNote = MutableStateFlow<Note?>(null)
     private val _uiEvents = Channel<UiEvent>()
     val uiEvents = _uiEvents.receiveAsFlow()
 
-    fun setDeletedNote(note: Note?) {
-        deletedNote = note
-        note?.let {
+    init {
+        viewModelScope.launch {
+            deletedNote.filterNotNull()
+                .collect {
+                    val emptyNote = it.isEmpty
+                    _uiEvents.send(
+                        UiEvent.NoteDeleted(
+                            if (emptyNote) "Empty note discarded" else "Note deleted",
+                            undo = !emptyNote
+                        )
+                    )
+                }
+        }
+    }
+
+    fun onMessageShown() {
+        deletedNote.value = null
+    }
+
+    fun undoDeleteNote() {
+        deletedNote.value?.let {
             viewModelScope.launch {
-                _uiEvents.send(UiEvent.ShowSnackBar("Note deleted", note))
+                noteRepository.insert(it.copy(id = 0))
+                deletedNote.value = null
             }
         }
     }
 
-    fun undoDeleteNote() {
-        deletedNote?.let {
-            viewModelScope.launch {
-                noteRepository.insert(it.copy(id=0))
-                deletedNote = null
-            }
-        }
+    fun updateDeletedNote(note: Note?) {
+        deletedNote.value = note
     }
 
     fun deleteNotes(noteIds: List<Long>) {
@@ -59,15 +73,13 @@ class HomeViewModel @Inject constructor(
     }
 
     fun deleteNote(note: Note) {
-        if (note == deletedNote) return
-
         viewModelScope.launch {
             noteRepository.delete(note)
-            setDeletedNote(note)
+            deletedNote.value = note
         }
     }
 }
 
-sealed interface UiEvent{
-    data class ShowSnackBar(val message: String, val deletedNote: Note?) : UiEvent
+sealed interface UiEvent {
+    data class NoteDeleted(val message: String, val undo: Boolean = false) : UiEvent
 }

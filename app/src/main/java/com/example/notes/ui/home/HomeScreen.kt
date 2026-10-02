@@ -68,13 +68,11 @@ import com.example.test.keep
 import com.example.test.note_alt
 import com.example.test.search
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    message: String?,
-    deletedNoteSerialized: String?,
+    deletedNote: Note?,
     onNavigateToNote: (Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel()
@@ -87,19 +85,14 @@ fun HomeScreen(
     var showConfirmDeleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        if (message == null) {
-            snackbarHostState.currentSnackbarData?.dismiss()
-        } else {
-            val deletedNote = deletedNoteSerialized?.let { Json.decodeFromString<Note>(it) }
-            viewModel.setDeletedNote(deletedNote)
-        }
+        viewModel.updateDeletedNote(deletedNote)
 
         viewModel.uiEvents.collect { event ->
             when (event) {
-                is UiEvent.ShowSnackBar -> {
+                is UiEvent.NoteDeleted -> {
                     val result = snackbarHostState.showSnackbar(
                         event.message,
-                        actionLabel = event.deletedNote?.let { "Undo" },
+                        actionLabel = if (event.undo) "Undo" else null,
                         withDismissAction = true,
                         duration = SnackbarDuration.Short
                     )
@@ -107,9 +100,9 @@ fun HomeScreen(
                     if (result == SnackbarResult.ActionPerformed) {
                         viewModel.undoDeleteNote()
                         listState.animateScrollToItem(notes.lastIndex.coerceAtLeast(0))
-                    } else {
-                        viewModel.setDeletedNote(null)
                     }
+
+                    viewModel.onMessageShown()
                 }
             }
         }

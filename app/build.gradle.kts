@@ -20,7 +20,7 @@ android {
         versionName = "1.0"
 
 //        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        testInstrumentationRunner = "com.example.notes.ui.edit.CustomTestRunner"
+        testInstrumentationRunner = "com.example.notes.CustomTestRunner"
     }
 
     buildTypes {
@@ -83,4 +83,6 @@ dependencies {
     // Compose UI test rule.
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    implementation("androidx.savedstate:savedstate-ktx:1.5.0")
 }

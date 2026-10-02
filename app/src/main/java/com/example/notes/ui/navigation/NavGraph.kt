@@ -5,6 +5,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.savedstate.serialization.encodeToSavedState
+import com.example.notes.models.Note
 import com.example.notes.ui.edit.EditScreen
 import com.example.notes.ui.home.HomeScreen
 
@@ -16,21 +18,22 @@ fun NavHost(
         navController,
         NavDestination.Home
     ) {
-        composable<NavDestination.Home>{ backStackEntry ->
-            val message = backStackEntry.savedStateHandle.get<String>("message")
-            val deletedNote = backStackEntry.savedStateHandle.get<String>("deletedNote")
+        composable<NavDestination.Home> { backStackEntry ->
+            val deletedNote =
+                Note.fromString(backStackEntry.savedStateHandle.get<String>("deletedNote"))
             HomeScreen(
-                message = message,
-                deletedNoteSerialized = deletedNote,
+                deletedNote = deletedNote,
                 onNavigateToNote = { navController.navigate(NavDestination.Edit(it)) }
             )
         }
 
         composable<NavDestination.Edit> {
             EditScreen(
-                navigateToHome = { message, deletedNote ->
-                    navController.previousBackStackEntry?.savedStateHandle?.set("message", message)
-                    navController.previousBackStackEntry?.savedStateHandle?.set("deletedNote", deletedNote)
+                navigateToHome = { deletedNote ->
+                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                        "deletedNote",
+                        deletedNote.toString()
+                    )
                     navController.navigateUp()
                 }
             )

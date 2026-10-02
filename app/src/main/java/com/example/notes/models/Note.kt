@@ -1,13 +1,14 @@
 package com.example.notes.models
 
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.Json
 import java.time.LocalDate
 
 @Serializable
@@ -21,6 +22,16 @@ data class Note(
 ) {
     val isEmpty
         get() = title.isBlank() && body.isBlank()
+
+    override fun toString(): String {
+        return Json.encodeToString(this)
+    }
+
+    companion object {
+        fun fromString(string: String?): Note? {
+            return string?.let { Json.decodeFromString(it) }
+        }
+    }
 }
 
 object LocalDateSerializer: KSerializer<LocalDate> {

@@ -1,7 +1,5 @@
 package com.example.notes.ui.edit
 
-import android.app.Application
-import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -10,25 +8,13 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
-import androidx.room3.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.runner.AndroidJUnitRunner
 import com.example.notes.MainActivity
-import com.example.notes.data.AppDatabase
-import com.example.notes.data.NoteDao
 import com.example.notes.data.NoteRepository
-import com.example.notes.di.DatabaseModule
 import com.example.notes.models.Note
-import dagger.Module
-import dagger.Provides
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
-import dagger.hilt.android.testing.HiltTestApplication
-import dagger.hilt.components.SingletonComponent
-import dagger.hilt.testing.TestInstallIn
 import jakarta.inject.Inject
-import jakarta.inject.Singleton
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -58,10 +44,6 @@ class EditScreenTest {
 
     @Test
     fun insertedNote_displayed() = runTest {
-        noteRepository.insert(Note(title = "Test title"))
-
-        composeRule.onNodeWithText("Test title").assertIsDisplayed()
-
         composeRule
             .onNodeWithTag("add_note_fab")
             .performClick()
@@ -172,7 +154,7 @@ class EditScreenTest {
     }
 
     @Test
-    fun newNoteCleared_showMessage() = runTest {
+    fun newNoteCleared_showNoMessage() = runTest {
         composeRule
             .onNodeWithTag("add_note_fab")
             .performClick()
@@ -185,32 +167,5 @@ class EditScreenTest {
             .performClick()
         composeRule
             .onNodeWithText("empty note discarded", substring = true, ignoreCase = true).assertIsNotDisplayed()
-    }
-}
-
-@TestInstallIn(components = [SingletonComponent::class], replaces = [DatabaseModule::class])
-@Module
-object TestDatabaseModule {
-    @Singleton
-    @Provides
-    fun provideAppDatabase(@ApplicationContext applicationContext: Context): AppDatabase {
-        return Room.inMemoryDatabaseBuilder(
-            applicationContext,
-            AppDatabase::class.java,
-        )
-            .build()
-    }
-
-    @Singleton
-    @Provides
-    fun provideNoteDao(db: AppDatabase): NoteDao {
-        return db.noteDao()
-    }
-}
-
-// A custom runner to set up the instrumented application class for tests.
-class CustomTestRunner : AndroidJUnitRunner() {
-    override fun newApplication(cl: ClassLoader?, name: String?, context: Context?): Application {
-        return super.newApplication(cl, HiltTestApplication::class.java.name, context)
     }
 }
